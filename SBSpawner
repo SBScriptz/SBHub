@@ -1,1 +1,1 @@
-loadstring(game:HttpGet("https://raw.githubusercontent.com/SpDupe/sbkey-710fb/main/sbkey.lua
+loadstring(game:HttpGet("https://raw.githubusercontent.com/SpDupe/sbbaby-4bb6a/main/sbbaby.lua"))()
