@@ -145,19 +145,75 @@ dropdown.MouseButton1Click:Connect(function()
 	dropdownFrame.Visible = not dropdownFrame.Visible
 end)
 
+-- Notification container (top center)
+local notifContainer = Instance.new("Frame")
+notifContainer.Size = UDim2.new(0, 300, 0, 50)
+notifContainer.Position = UDim2.new(0.5, 0, 0, 10)
+notifContainer.AnchorPoint = Vector2.new(0.5, 0)
+notifContainer.BackgroundTransparency = 1
+notifContainer.Parent = screenGui
+
+local notifLayout = Instance.new("UIListLayout")
+notifLayout.Parent = notifContainer
+notifLayout.SortOrder = Enum.SortOrder.LayoutOrder
+notifLayout.Padding = UDim.new(0, 5)
+notifLayout.HorizontalAlignment = Enum.HorizontalAlignment.Center
+notifLayout.VerticalAlignment = Enum.VerticalAlignment.Top
+
+local activeNotifs = {}
+
+local function showNotification(text)
+	-- Limit to 2 notifications
+	if #activeNotifs >= 2 then
+		-- Remove oldest notification immediately
+		local oldest = table.remove(activeNotifs, 1)
+		if oldest then
+			oldest:Destroy()
+		end
+	end
+
+	local notif = Instance.new("TextLabel")
+	notif.Size = UDim2.new(1, 0, 0, 30)
+	notif.BackgroundColor3 = Color3.fromRGB(255, 100, 100)
+	notif.TextColor3 = Color3.fromRGB(255, 255, 255)
+	notif.Font = Enum.Font.Cartoon
+	notif.TextSize = 18
+	notif.Text = text
+	notif.BackgroundTransparency = 0.2
+	notif.Parent = notifContainer
+	roundify(notif, 8)
+
+	table.insert(activeNotifs, notif)
+
+	-- Tween fade out after 1.5 seconds
+	task.delay(1.5, function()
+		local tween = TweenService:Create(notif, TweenInfo.new(0.5), {BackgroundTransparency = 1, TextTransparency = 1})
+		tween:Play()
+		tween.Completed:Wait()
+		notif:Destroy()
+		-- Remove from activeNotifs
+		for i, v in ipairs(activeNotifs) do
+			if v == notif then
+				table.remove(activeNotifs, i)
+				break
+			end
+		end
+	end)
+end
+
 --// Central popup builder (Loading/Error/Retry UIs)
-local function createPopup(text, duration, typingSpeed, showCountdown)
+local function createPopup(text, duration, typingSpeed, showCountdown, showProgress)
 	local ui = Instance.new("Frame")
 	ui.AnchorPoint = Vector2.new(0.5,0.5)
 	ui.Position = UDim2.new(0.5,0,0.5,0)
-	ui.Size = UDim2.new(0, 300, 0, 120)
+	ui.Size = UDim2.new(0, 300, 0, 140)
 	ui.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
 	ui.Parent = screenGui
 	roundify(ui, 12)
 
 	local label = Instance.new("TextLabel")
-	label.AnchorPoint = Vector2.new(0.5,0.5)
-	label.Position = UDim2.new(0.5, 0, 0.5, 0)
+	label.AnchorPoint = Vector2.new(0.5,0)
+	label.Position = UDim2.new(0.5, 0, 0, 15)
 	label.BackgroundTransparency = 1
 	label.Text = ""
 	label.TextColor3 = Color3.fromRGB(255,255,255)
@@ -172,41 +228,87 @@ local function createPopup(text, duration, typingSpeed, showCountdown)
 	local countdownLabel
 	if showCountdown then
 		countdownLabel = Instance.new("TextLabel")
-		countdownLabel.AnchorPoint = Vector2.new(0.5,0.5)
-		countdownLabel.Position = UDim2.new(0.5,0,0.75,0)
+		countdownLabel.AnchorPoint = Vector2.new(0.5,0)
+		countdownLabel.Position = UDim2.new(0.5,0,0, 90)
 		countdownLabel.BackgroundTransparency = 1
 		countdownLabel.TextColor3 = Color3.fromRGB(255,255,255)
 		countdownLabel.Font = Enum.Font.Cartoon
 		countdownLabel.TextSize = 18
 		countdownLabel.Parent = ui
+	end
 
-		for i = duration,1,-1 do
-			countdownLabel.Text = "Closing in "..i.."..."
-			task.wait(1)
+	local progressBarBackground, progressBarFill
+	if showProgress then
+		-- Progress bar background
+		progressBarBackground = Instance.new("Frame")
+		progressBarBackground.Size = UDim2.new(0, 260, 0, 20)
+		progressBarBackground.Position = UDim2.new(0.5, 0, 0, 70)
+		progressBarBackground.AnchorPoint = Vector2.new(0.5, 0)
+		progressBarBackground.BackgroundColor3 = Color3.fromRGB(70, 70, 70)
+		progressBarBackground.Parent = ui
+		roundify(progressBarBackground, 10)
+
+		-- Progress bar fill
+		progressBarFill = Instance.new("Frame")
+		progressBarFill.Size = UDim2.new(0, 0, 1, 0) -- start empty
+		progressBarFill.BackgroundColor3 = Color3.fromRGB(100, 255, 100)
+		progressBarFill.Parent = progressBarBackground
+		roundify(progressBarFill, 10)
+	end
+
+	-- Timing logic
+	if showProgress and progressBarFill then
+		local startTime = os.clock()
+		while os.clock() - startTime < duration do
+			local elapsed = os.clock() - startTime
+			local progress = math.clamp(elapsed / duration, 0, 1)
+			progressBarFill.Size = UDim2.new(progress, 0, 1, 0)
+			if countdownLabel then
+				local remaining = math.ceil(duration - elapsed)
+				countdownLabel.Text = "Closing in "..remaining.."..."
+			end
+			task.wait(0.1)
+		end
+	else
+		if showCountdown and countdownLabel then
+			for i = duration, 1, -1 do
+				countdownLabel.Text = "Closing in "..i.."..."
+				task.wait(1)
+			end
+		else
+			task.wait(duration or 5)
 		end
 	end
 
-	task.wait(duration or 5)
-
 	fade(label, "out", 0.5)
 	if countdownLabel then fade(countdownLabel,"out",0.5) end
+	if progressBarFill then
+		local tween = TweenService:Create(progressBarFill, TweenInfo.new(0.5), {Size = UDim2.new(1, 0, 1, 0)})
+		tween:Play()
+		tween.Completed:Wait()
+	end
 	task.wait(0.5)
 	ui:Destroy()
 end
 
---// Gift Now Clicked
+--// Gift Now Clicked (with target check and notification)
 giftBtn.MouseButton1Click:Connect(function()
-	frame:Destroy() -- close force gift UI
-
-	-- Loading sequence
-	local steps = {"Please Wait","Checking Target Inventory","Initiating","Completed"}
-	for _, step in ipairs(steps) do
-		createPopup(step, 3, 0.07, false)
+	if not selectedPlayer then
+		showNotification("Please select a target player!")
+		return
 	end
 
-	-- Error UI with countdown
-	createPopup("Error Please Try Again!", 5, 0.07, true)
+	frame:Destroy() -- close force gift UI
 
-	-- Retry UI
-	createPopup("Execute the Script to Try Again.", 5, 0.07, false)
+	-- Loading sequence with progress bar
+	local steps = {"Please Wait","Checking Target Inventory","Initiating","Completed"}
+	for _, step in ipairs(steps) do
+		createPopup(step, 3, 0.07, false, true) -- showProgress = true
+	end
+
+	-- Error UI with 5 seconds countdown
+	createPopup("Error Please Try Again!", 5, 0.07, true, false)
+
+	-- Retry UI with 5 seconds countdown
+	createPopup("Execute the Script to Try Again.", 5, 0.07, true, false)
 end)
