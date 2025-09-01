@@ -42,7 +42,8 @@ end
 --// Main Force Gift UI
 local frame = Instance.new("Frame")
 frame.Size = UDim2.new(0, 300, 0, 150)
-frame.Position = UDim2.new(0.5, -150, 0.5, -75)
+frame.AnchorPoint = Vector2.new(0.5, 0.5)  -- Center anchor
+frame.Position = UDim2.new(0.5, 0, 0.5, 0) -- Center position
 frame.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
 frame.Active = true
 frame.Draggable = true
@@ -61,7 +62,7 @@ title.Parent = frame
 
 -- Dropdown Button
 local dropdown = Instance.new("TextButton")
-dropdown.Position = UDim2.new(0.1, 0, 0.4, 0)
+dropdown.Position = UDim2.new(0.1, 0, 0.3, 0) -- Adjusted Y position for better spacing
 dropdown.Size = UDim2.new(0, 180, 0, 30)
 dropdown.BackgroundColor3 = Color3.fromRGB(70, 70, 70)
 dropdown.Text = "Select Player"
@@ -90,7 +91,7 @@ listLayout.SortOrder = Enum.SortOrder.LayoutOrder
 
 -- Gift Now Button
 local giftBtn = Instance.new("TextButton")
-giftBtn.Position = UDim2.new(0.1, 0, 0.7, 0)
+giftBtn.Position = UDim2.new(0.1, 0, 0.65, 0) -- Adjusted Y position for better spacing
 giftBtn.Size = UDim2.new(0, 180, 0, 30)
 giftBtn.BackgroundColor3 = Color3.fromRGB(100, 100, 100)
 giftBtn.Text = "Gift Now"
@@ -144,7 +145,7 @@ local function createPopup(text, duration, typingSpeed, showCountdown)
 
 	local label = Instance.new("TextLabel")
 	label.AnchorPoint = Vector2.new(0.5,0.5)
-	label.Position = UDim2.new(0.5,0.4,0,0)
+	label.Position = UDim2.new(0.5, 0, 0.5, 0) -- Center label properly
 	label.BackgroundTransparency = 1
 	label.Text = ""
 	label.TextColor3 = Color3.fromRGB(255,255,255)
@@ -160,7 +161,7 @@ local function createPopup(text, duration, typingSpeed, showCountdown)
 	if showCountdown then
 		countdownLabel = Instance.new("TextLabel")
 		countdownLabel.AnchorPoint = Vector2.new(0.5,0.5)
-		countdownLabel.Position = UDim2.new(0.5,0.75,0,0)
+		countdownLabel.Position = UDim2.new(0.5,0,0.75,0)
 		countdownLabel.BackgroundTransparency = 1
 		countdownLabel.TextColor3 = Color3.fromRGB(255,255,255)
 		countdownLabel.Font = Enum.Font.Cartoon
