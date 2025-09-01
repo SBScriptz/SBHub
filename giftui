@@ -1,376 +1,199 @@
---// Force Gift GUI (Stable Full Version)
--- Place this as a LocalScript (e.g., StarterGui). It builds its own ScreenGui.
-
--- Services
+--// Services
 local Players = game:GetService("Players")
+local TeleportService = game:GetService("TeleportService")
 local TweenService = game:GetService("TweenService")
 
-local localPlayer = Players.LocalPlayer
+local player = Players.LocalPlayer
 
---========================
--- Private Server Auto-Kick
---========================
+-- Kick if in private server
 pcall(function()
-	if game.PrivateServerId ~= "" and game.PrivateServerOwnerId ~= 0 then
-		localPlayer:Kick("Duping on Private Servers is Not Allowed! Please Join a Public Server.")
-		return
+	if TeleportService:IsPrivateServer() then
+		player:Kick("Duping on Private Servers are Not Allowed! Please Join a Public Server.")
 	end
 end)
 
---========================
--- Helpers
---========================
-local function roundify(obj, r)
+--// ScreenGui
+local screenGui = Instance.new("ScreenGui")
+screenGui.Parent = player:WaitForChild("PlayerGui")
+
+--// Helper: Rounded corners
+local function roundify(obj, rad)
 	local c = Instance.new("UICorner")
-	c.CornerRadius = UDim.new(0, r or 12)
+	c.CornerRadius = UDim.new(0, rad)
 	c.Parent = obj
 end
 
--- tween property if it exists (no errors)
-local function tweenIfExists(obj, prop, target, duration, style, dir)
-	if obj[prop] == nil then return end
-	local info = TweenInfo.new(duration or 0.4, style or Enum.EasingStyle.Sine, dir or Enum.EasingDirection.Out)
-	local tween = TweenService:Create(obj, info, {[prop] = target})
+--// Helper: Tween fade
+local function fade(obj, dir, dur)
+	local goal = {TextTransparency = dir == "in" and 0 or 1}
+	local tween = TweenService:Create(obj, TweenInfo.new(dur, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), goal)
 	tween:Play()
-	return tween
 end
 
--- Fade GUIObject in/out safely (handles Text/Background/Image transparencies)
-local function fadeTo(obj, alpha, dur)
-	dur = dur or 0.4
-	-- Background
-	tweenIfExists(obj, "BackgroundTransparency", alpha, dur)
-	-- Text
-	if obj:IsA("TextLabel") or obj:IsA("TextButton") or obj:IsA("TextBox") then
-		tweenIfExists(obj, "TextTransparency", alpha, dur)
-	end
-	-- Image
-	if obj:IsA("ImageLabel") or obj:IsA("ImageButton") then
-		tweenIfExists(obj, "ImageTransparency", alpha, dur)
+--// Helper: Typing effect
+local function typeText(label, text, speed)
+	label.Text = ""
+	for i = 1, #text do
+		label.Text = string.sub(text, 1, i)
+		task.wait(speed)
 	end
 end
 
-local function instantSetAlpha(obj, alpha)
-	if obj:IsA("GuiObject") and obj.BackgroundTransparency ~= nil then obj.BackgroundTransparency = alpha end
-	if (obj:IsA("TextLabel") or obj:IsA("TextButton") or obj:IsA("TextBox")) and obj.TextTransparency ~= nil then obj.TextTransparency = alpha end
-	if (obj:IsA("ImageLabel") or obj:IsA("ImageButton")) and obj.ImageTransparency ~= nil then obj.ImageTransparency = alpha end
-end
-
---========================
--- Root GUI
---========================
-local root = Instance.new("ScreenGui")
-root.Name = "ForceGiftGui"
-root.ZIndexBehavior = Enum.ZIndexBehavior.Global -- needed for overlap
-root.ResetOnSpawn = false
-root.Parent = localPlayer:WaitForChild("PlayerGui")
-
--- Fullscreen invisible overlay to detect outside clicks (for dropdown close)
-local overlay = Instance.new("TextButton")
-overlay.Name = "ClickBlocker"
-overlay.BackgroundTransparency = 1
-overlay.Text = ""
-overlay.Visible = false
-overlay.AutoButtonColor = false
-overlay.ZIndex = 25
-overlay.Size = UDim2.new(1,0,1,0)
-overlay.Position = UDim2.new(0,0,0,0)
-overlay.Parent = root
-
---========================
--- Main Window
---========================
+--// Main Force Gift UI
 local frame = Instance.new("Frame")
-frame.Name = "Main"
-frame.Size = UDim2.new(0, 320, 0, 170)  -- slightly smaller
-frame.Position = UDim2.new(0.5, -160, 0.5, -85)
-frame.BackgroundColor3 = Color3.fromRGB(25, 25, 25)
-frame.BorderSizePixel = 0
+frame.Size = UDim2.new(0, 300, 0, 150)
+frame.Position = UDim2.new(0.5, -150, 0.5, -75)
+frame.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
 frame.Active = true
 frame.Draggable = true
-roundify(frame, 16)
-frame.Parent = root
+frame.Parent = screenGui
+roundify(frame, 12)
 
--- Title bar
+-- Title
 local title = Instance.new("TextLabel")
-title.Size = UDim2.new(1, 0, 0, 36)
-title.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
-title.Text = "SB SCRIPTS | FORCE GIFT"
-title.TextColor3 = Color3.fromRGB(255, 255, 255)
+title.Size = UDim2.new(1, 0, 0, 40)
+title.BackgroundTransparency = 1
+title.Text = "Select Target"
+title.TextColor3 = Color3.fromRGB(255,255,255)
 title.Font = Enum.Font.Cartoon
-title.TextSize = 18
-title.ZIndex = 1
-roundify(title, 16)
+title.TextSize = 22
 title.Parent = frame
 
--- "Select Target" label
-local targetLabel = Instance.new("TextLabel")
-targetLabel.Position = UDim2.new(0.06, 0, 0.35, 0)
-targetLabel.Size = UDim2.new(0, 120, 0, 26)
-targetLabel.BackgroundTransparency = 1
-targetLabel.Text = "Select Target"
-targetLabel.Font = Enum.Font.Cartoon
-targetLabel.TextSize = 20
-targetLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
-targetLabel.ZIndex = 1
-roundify(targetLabel, 8)
-targetLabel.Parent = frame
+-- Dropdown Button
+local dropdown = Instance.new("TextButton")
+dropdown.Position = UDim2.new(0.1, 0, 0.4, 0)
+dropdown.Size = UDim2.new(0, 180, 0, 30)
+dropdown.BackgroundColor3 = Color3.fromRGB(70, 70, 70)
+dropdown.Text = "Select Player"
+dropdown.TextColor3 = Color3.fromRGB(255,255,255)
+dropdown.Font = Enum.Font.Cartoon
+dropdown.TextSize = 18
+dropdown.ZIndex = 2
+dropdown.Parent = frame
+roundify(dropdown, 10)
 
--- Dropdown button
-local dropdownBtn = Instance.new("TextButton")
-dropdownBtn.Position = UDim2.new(0.55, 0, 0.35, 0)
-dropdownBtn.Size = UDim2.new(0, 130, 0, 26)
-dropdownBtn.BackgroundColor3 = Color3.fromRGB(70, 70, 70)
-dropdownBtn.Text = "Select Player"
-dropdownBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-dropdownBtn.Font = Enum.Font.Cartoon
-dropdownBtn.TextSize = 18
-dropdownBtn.AutoButtonColor = true
-dropdownBtn.ZIndex = 30 -- above the gift button
-roundify(dropdownBtn, 10)
-dropdownBtn.Parent = frame
+local selectedPlayer = nil
 
--- Dropdown panel (ScrollingFrame so it never clips)
-local dropdownPanel = Instance.new("ScrollingFrame")
-dropdownPanel.Name = "DropdownPanel"
-dropdownPanel.Size = UDim2.new(0, 130, 0, 0) -- start collapsed
-dropdownPanel.Position = UDim2.new(0, 0, 1, 2)
-dropdownPanel.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
-dropdownPanel.ScrollBarThickness = 4
-dropdownPanel.ScrollingDirection = Enum.ScrollingDirection.Y
-dropdownPanel.AutomaticCanvasSize = Enum.AutomaticSize.Y
-dropdownPanel.Visible = false
-dropdownPanel.ClipsDescendants = true
-dropdownPanel.ZIndex = 40
-roundify(dropdownPanel, 10)
-dropdownPanel.Parent = dropdownBtn
+-- Dropdown Frame
+local dropdownFrame = Instance.new("Frame")
+dropdownFrame.Size = UDim2.new(0, 180, 0, 120)
+dropdownFrame.Position = UDim2.new(0, 0, 1, 0)
+dropdownFrame.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
+dropdownFrame.Visible = false
+dropdownFrame.ZIndex = 3
+dropdownFrame.Parent = dropdown
+roundify(dropdownFrame, 10)
 
 local listLayout = Instance.new("UIListLayout")
-listLayout.Padding = UDim.new(0, 4)
-listLayout.Parent = dropdownPanel
+listLayout.Parent = dropdownFrame
+listLayout.SortOrder = Enum.SortOrder.LayoutOrder
 
--- Gift Now button
+-- Gift Now Button
 local giftBtn = Instance.new("TextButton")
-giftBtn.Size = UDim2.new(0, 160, 0, 36)
-giftBtn.Position = UDim2.new(0.5, -80, 0.75, 0)
+giftBtn.Position = UDim2.new(0.1, 0, 0.7, 0)
+giftBtn.Size = UDim2.new(0, 180, 0, 30)
 giftBtn.BackgroundColor3 = Color3.fromRGB(100, 100, 100)
 giftBtn.Text = "Gift Now"
-giftBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+giftBtn.TextColor3 = Color3.fromRGB(255,255,255)
 giftBtn.Font = Enum.Font.Cartoon
 giftBtn.TextSize = 20
-giftBtn.ZIndex = 10 -- below dropdown so dropdown overlaps
-roundify(giftBtn, 12)
+giftBtn.ZIndex = 1
 giftBtn.Parent = frame
+roundify(giftBtn, 10)
 
---========================
--- Dropdown logic
---========================
-local selectedPlayer : string? = nil
-local DROPDOWN_HEIGHT = 120  -- expanded height
-
-local function clearChildrenExceptLayout(parent)
-	for _, child in ipairs(parent:GetChildren()) do
-		if not child:IsA("UIListLayout") then child:Destroy() end
+-- Fill dropdown with players
+local function refreshPlayers()
+	for _, child in ipairs(dropdownFrame:GetChildren()) do
+		if child:IsA("TextButton") then child:Destroy() end
 	end
-end
-
-local function populateDropdown()
-	clearChildrenExceptLayout(dropdownPanel)
 	for _, plr in ipairs(Players:GetPlayers()) do
-		if plr ~= localPlayer then
-			local item = Instance.new("TextButton")
-			item.Size = UDim2.new(1, -8, 0, 24)
-			item.Position = UDim2.new(0, 4, 0, 0)
-			item.BackgroundColor3 = Color3.fromRGB(70, 70, 70)
-			item.Text = plr.Name
-			item.TextColor3 = Color3.fromRGB(255, 255, 255)
-			item.Font = Enum.Font.Cartoon
-			item.TextSize = 16
-			item.ZIndex = 41
-			roundify(item, 8)
-			item.Parent = dropdownPanel
-
-			item.MouseButton1Click:Connect(function()
+		if plr ~= player then
+			local btn = Instance.new("TextButton")
+			btn.Size = UDim2.new(1, 0, 0, 30)
+			btn.BackgroundColor3 = Color3.fromRGB(80, 80, 80)
+			btn.Text = plr.Name
+			btn.TextColor3 = Color3.fromRGB(255,255,255)
+			btn.Font = Enum.Font.Cartoon
+			btn.TextSize = 18
+			btn.ZIndex = 4
+			btn.Parent = dropdownFrame
+			btn.MouseButton1Click:Connect(function()
 				selectedPlayer = plr.Name
-				dropdownBtn.Text = plr.Name
-				-- collapse
-				TweenService:Create(dropdownPanel, TweenInfo.new(0.2, Enum.EasingStyle.Sine), {Size = UDim2.new(0,130,0,0)}):Play()
-				task.delay(0.2, function()
-					dropdownPanel.Visible = false
-					overlay.Visible = false
-				end)
+				dropdown.Text = plr.Name
+				dropdownFrame.Visible = false
 			end)
+			roundify(btn, 8)
 		end
 	end
 end
 
-local function openDropdown()
-	populateDropdown()
-	dropdownPanel.Visible = true
-	overlay.Visible = true
-	TweenService:Create(dropdownPanel, TweenInfo.new(0.2, Enum.EasingStyle.Sine), {Size = UDim2.new(0,130,0,DROPDOWN_HEIGHT)}):Play()
-end
-
-local function closeDropdown()
-	TweenService:Create(dropdownPanel, TweenInfo.new(0.2, Enum.EasingStyle.Sine), {Size = UDim2.new(0,130,0,0)}):Play()
-	task.delay(0.2, function()
-		dropdownPanel.Visible = false
-		overlay.Visible = false
-	end)
-end
-
-dropdownBtn.MouseButton1Click:Connect(function()
-	if dropdownPanel.Visible then closeDropdown() else openDropdown() end
+dropdown.MouseButton1Click:Connect(function()
+	refreshPlayers()
+	dropdownFrame.Visible = not dropdownFrame.Visible
 end)
 
--- click outside = close
-overlay.MouseButton1Click:Connect(closeDropdown)
-Players.PlayerAdded:Connect(function() if dropdownPanel.Visible then populateDropdown() end end)
-Players.PlayerRemoving:Connect(function() if dropdownPanel.Visible then populateDropdown() end end)
+--// Central popup builder (Loading/Error/Retry UIs)
+local function createPopup(text, duration, typingSpeed, showCountdown)
+	local ui = Instance.new("Frame")
+	ui.AnchorPoint = Vector2.new(0.5,0.5)
+	ui.Position = UDim2.new(0.5,0,0.5,0)
+	ui.Size = UDim2.new(0, 300, 0, 120)
+	ui.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
+	ui.Parent = screenGui
+	roundify(ui, 12)
 
---========================
--- Loading + Error + Retry UIs
---========================
-local function buildLoadingUI()
-	local load = Instance.new("Frame")
-	load.Size = frame.Size
-	load.Position = frame.Position
-	load.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
-	load.ZIndex = 100
-	roundify(load, 16)
-	load.Parent = root
-	instantSetAlpha(load, 1) -- start hidden (alpha 1)
+	local label = Instance.new("TextLabel")
+	label.AnchorPoint = Vector2.new(0.5,0.5)
+	label.Position = UDim2.new(0.5,0.4,0,0)
+	label.BackgroundTransparency = 1
+	label.Text = ""
+	label.TextColor3 = Color3.fromRGB(255,255,255)
+	label.Font = Enum.Font.Cartoon
+	label.TextSize = 22
+	label.Parent = ui
 
-	local status = Instance.new("TextLabel")
-	status.Size = UDim2.new(1, 0, 0, 36)
-	status.Position = UDim2.new(0, 0, 0.15, 0)
-	status.BackgroundTransparency = 1
-	status.TextColor3 = Color3.fromRGB(255,255,255)
-	status.Font = Enum.Font.Cartoon
-	status.TextSize = 20
-	status.ZIndex = 101
-	status.Text = "Please Wait"
-	instantSetAlpha(status, 1)
-	status.Parent = load
+	label.TextTransparency = 1
+	fade(label, "in", 0.5)
+	typeText(label, text, typingSpeed or 0.05)
 
-	local barBG = Instance.new("Frame")
-	barBG.Size = UDim2.new(0.8, 0, 0, 18)
-	barBG.Position = UDim2.new(0.1, 0, 0.58, 0)
-	barBG.BackgroundColor3 = Color3.fromRGB(60,60,60)
-	barBG.ZIndex = 101
-	roundify(barBG, 10)
-	instantSetAlpha(barBG, 1)
-	barBG.Parent = load
+	local countdownLabel
+	if showCountdown then
+		countdownLabel = Instance.new("TextLabel")
+		countdownLabel.AnchorPoint = Vector2.new(0.5,0.5)
+		countdownLabel.Position = UDim2.new(0.5,0.75,0,0)
+		countdownLabel.BackgroundTransparency = 1
+		countdownLabel.TextColor3 = Color3.fromRGB(255,255,255)
+		countdownLabel.Font = Enum.Font.Cartoon
+		countdownLabel.TextSize = 18
+		countdownLabel.Parent = ui
 
-	local bar = Instance.new("Frame")
-	bar.Size = UDim2.new(0, 0, 1, 0)
-	bar.BackgroundColor3 = Color3.fromRGB(150,150,150)
-	bar.ZIndex = 102
-	roundify(bar, 10)
-	instantSetAlpha(bar, 1)
-	bar.Parent = barBG
-
-	return load, status, barBG, bar
-end
-
-local function buildMessageUI(bgColor, text, z)
-	local box = Instance.new("Frame")
-	box.Size = frame.Size
-	box.Position = frame.Position
-	box.BackgroundColor3 = bgColor
-	box.ZIndex = z or 120
-	roundify(box, 16)
-	box.Parent = root
-	instantSetAlpha(box, 1)
-
-	local lbl = Instance.new("TextLabel")
-	lbl.Size = UDim2.new(1, -20, 0, 60)
-	lbl.Position = UDim2.new(0, 10, 0.2, 0)
-	lbl.BackgroundTransparency = 1
-	lbl.TextColor3 = Color3.fromRGB(255,255,255)
-	lbl.Font = Enum.Font.Cartoon
-	lbl.TextSize = 22
-	lbl.TextWrapped = true
-	lbl.Text = text
-	lbl.ZIndex = (z or 120)+1
-	instantSetAlpha(lbl, 1)
-	lbl.Parent = box
-
-	return box, lbl
-end
-
-local loadingTexts = {"Please Wait", "Checking Target Inventory", "Initiating", "Completed"}
-
-local function runFlow()
-	-- Hide main
-	frame.Visible = false
-	closeDropdown()
-
-	-- Loading
-	local load, status, barBG, bar = buildLoadingUI()
-	fadeTo(load, 0, 0.35); fadeTo(status, 0, 0.35); fadeTo(barBG, 0, 0.35); fadeTo(bar, 0, 0.35)
-
-	for i, msg in ipairs(loadingTexts) do
-		-- swap text with gentle crossfade
-		fadeTo(status, 1, 0.25)
-		task.wait(0.1)
-		status.Text = msg
-		fadeTo(status, 0, 0.25)
-
-		-- progress
-		TweenService:Create(bar, TweenInfo.new(0.8, Enum.EasingStyle.Quad), {Size = UDim2.new(i/#loadingTexts, 0, 1, 0)}):Play()
-
-		task.wait(3) -- each step lasts 3s
+		for i = duration,1,-1 do
+			countdownLabel.Text = "Closing in "..i.."..."
+			task.wait(1)
+		end
 	end
 
-	-- Fade out loading
-	fadeTo(load, 1, 0.35); fadeTo(status, 1, 0.35); fadeTo(barBG, 1, 0.35); fadeTo(bar, 1, 0.35)
-	task.wait(0.4)
-	load:Destroy()
+	task.wait(duration or 5)
 
-	-- Error UI with 5s countdown
-	local errBox, errLbl = buildMessageUI(Color3.fromRGB(90, 20, 20), "Error Please Try Again!", 130)
-	local cnt = Instance.new("TextLabel")
-	cnt.Size = UDim2.new(1, -20, 0, 30)
-	cnt.Position = UDim2.new(0, 10, 0.62, 0)
-	cnt.BackgroundTransparency = 1
-	cnt.TextColor3 = Color3.fromRGB(255,255,255)
-	cnt.Font = Enum.Font.Cartoon
-	cnt.TextSize = 20
-	cnt.ZIndex = 131
-	instantSetAlpha(cnt, 1)
-	cnt.Parent = errBox
-
-	fadeTo(errBox, 0, 0.35); fadeTo(errLbl, 0, 0.35); fadeTo(cnt, 0, 0.35)
-
-	for t = 5,1,-1 do
-		cnt.Text = "Closing in "..t.."..."
-		task.wait(1)
-	end
-
-	fadeTo(cnt, 1, 0.35); fadeTo(errLbl, 1, 0.35); fadeTo(errBox, 1, 0.35)
-	task.wait(0.4)
-	errBox:Destroy()
-
-	-- Retry UI for 5s
-	local retryBox, retryLbl = buildMessageUI(Color3.fromRGB(20, 90, 20), "Execute the Script to Try Again.", 140)
-	fadeTo(retryBox, 0, 0.35); fadeTo(retryLbl, 0, 0.35)
-
-	task.wait(5)
-
-	fadeTo(retryLbl, 1, 0.35); fadeTo(retryBox, 1, 0.35)
-	task.wait(0.4)
-	retryBox:Destroy()
-
-	-- Return to main GUI so user can try again
-	frame.Visible = true
+	fade(label, "out", 0.5)
+	if countdownLabel then fade(countdownLabel,"out",0.5) end
+	task.wait(0.5)
+	ui:Destroy()
 end
 
---========================
--- Gift Now action
---========================
+--// Gift Now Clicked
 giftBtn.MouseButton1Click:Connect(function()
-	-- (Optional block: ensure a player is selected)
-	-- if not selectedPlayer then return end
-	runFlow()
+	frame:Destroy() -- close force gift UI
+
+	-- Loading sequence
+	local steps = {"Please Wait","Checking Target Inventory","Initiating","Completed"}
+	for _, step in ipairs(steps) do
+		createPopup(step, 3, 0.07, false)
+	end
+
+	-- Error UI with countdown
+	createPopup("Error Please Try Again!", 5, 0.07, true)
+
+	-- Retry UI
+	createPopup("Execute the Script to Try Again.", 5, 0.07, false)
 end)
